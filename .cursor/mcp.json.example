@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "asaas": {
+      "url": "https://docs.asaas.com/mcp",
+      "headers": {
+        "access_token": "sua_chave_api_asaas"
+      }
+    }
+  }
+}
