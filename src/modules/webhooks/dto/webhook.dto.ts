@@ -22,11 +22,14 @@ export class AsaasWebhookDto {
     id: string;
     customer: string;
     subscription?: string;
+    checkoutSession?: string;
     value: number;
     netValue?: number;
     status: string;
     dueDate: string;
     paymentDate?: string;
+    confirmedDate?: string;
+    clientPaymentDate?: string;
     billingType: string;
     externalReference?: string;
   };

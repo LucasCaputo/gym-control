@@ -7,6 +7,7 @@ import { FinancialStatus } from '../../../shared/types/financial-status.enum';
 import { AsaasWebhookDto } from '../dto/webhook.dto';
 
 const HANDLED_EVENTS = [
+  'PAYMENT_CREATED',
   'PAYMENT_RECEIVED',
   'PAYMENT_CONFIRMED',
   'PAYMENT_OVERDUE',
@@ -57,28 +58,40 @@ export class ProcessWebhookUseCase {
 
     if (!student && payment.externalReference) {
       student = await this.studentModel.findById(payment.externalReference).exec();
-      if (student) {
-        this.logger.log(
-          `[Webhook] Student found by externalReference: ${payment.externalReference}, saving asaasCustomerId: ${payment.customer}`,
-        );
-        await this.studentModel
-          .findByIdAndUpdate(payment.externalReference, { asaasCustomerId: payment.customer })
-          .exec();
-      }
+    }
+
+    if (!student && payment.checkoutSession) {
+      student = await this.studentModel
+        .findOne({ asaasCheckoutId: payment.checkoutSession })
+        .exec();
     }
 
     if (!student) {
       this.logger.warn(
-        `[Webhook] Student not found for customer: ${payment.customer} | externalReference: ${payment.externalReference}`,
+        `[Webhook] Student not found | customer: ${payment.customer} | externalReference: ${payment.externalReference} | checkoutSession: ${payment.checkoutSession}`,
       );
       return;
     }
 
     const studentId = (student as any)._id as Types.ObjectId;
 
+    const updates: Record<string, any> = {};
+    if (!student.asaasCustomerId && payment.customer) {
+      updates.asaasCustomerId = payment.customer;
+    }
+    if (!student.asaasSubscriptionId && payment.subscription) {
+      updates.asaasSubscriptionId = payment.subscription;
+    }
+    if (Object.keys(updates).length > 0) {
+      await this.studentModel.findByIdAndUpdate(studentId, updates).exec();
+      this.logger.log(`[Webhook] Student ${studentId} linked: ${JSON.stringify(updates)}`);
+    }
+
     const existing = await this.paymentHistoryModel
       .findOne({ asaasPaymentId: payment.id })
       .exec();
+
+    const paidDate = payment.paymentDate || payment.confirmedDate || payment.clientPaymentDate;
 
     if (!existing) {
       await this.paymentHistoryModel.create({
@@ -86,29 +99,26 @@ export class ProcessWebhookUseCase {
         asaasPaymentId: payment.id,
         asaasSubscriptionId: payment.subscription,
         amount: payment.value,
-        method: 'CARD',
+        method: payment.billingType === 'PIX' ? 'PIX' : 'CARD',
         status: payment.status,
         dueDate: new Date(payment.dueDate),
-        paidAt: payment.paymentDate ? new Date(payment.paymentDate) : undefined,
+        paidAt: paidDate ? new Date(paidDate) : undefined,
       });
+      this.logger.log(`[Webhook] PaymentHistory created for payment: ${payment.id}`);
     } else {
       await this.paymentHistoryModel
         .findByIdAndUpdate((existing as any)._id, {
           status: payment.status,
-          paidAt: payment.paymentDate ? new Date(payment.paymentDate) : undefined,
+          paidAt: paidDate ? new Date(paidDate) : undefined,
         })
         .exec();
+      this.logger.log(`[Webhook] PaymentHistory updated for payment: ${payment.id}`);
     }
 
-    if (payment.subscription && !student.asaasSubscriptionId) {
-      await this.studentModel
-        .findByIdAndUpdate(studentId, { asaasSubscriptionId: payment.subscription })
-        .exec();
-    }
-
+    const confirmedStatuses = ['CONFIRMED', 'RECEIVED', 'RECEIVED_IN_CASH'];
     let newFinancialStatus: FinancialStatus | undefined;
 
-    if (payload.event === 'PAYMENT_RECEIVED' || payload.event === 'PAYMENT_CONFIRMED') {
+    if (confirmedStatuses.includes(payment.status)) {
       newFinancialStatus = FinancialStatus.ACTIVE;
     } else if (payload.event === 'PAYMENT_OVERDUE') {
       newFinancialStatus = FinancialStatus.OVERDUE;
