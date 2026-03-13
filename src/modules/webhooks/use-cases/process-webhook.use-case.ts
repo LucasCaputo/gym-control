@@ -11,6 +11,7 @@ const HANDLED_EVENTS = [
   'PAYMENT_CONFIRMED',
   'PAYMENT_OVERDUE',
   'SUBSCRIPTION_DELETED',
+  'CHECKOUT_PAID',
 ];
 
 @Injectable()
@@ -29,6 +30,11 @@ export class ProcessWebhookUseCase {
 
     if (!HANDLED_EVENTS.includes(payload.event)) {
       this.logger.log(`[Webhook] Ignoring unhandled event: ${payload.event}`);
+      return;
+    }
+
+    if (payload.event === 'CHECKOUT_PAID') {
+      await this.handleCheckoutPaid(payload);
       return;
     }
 
@@ -100,6 +106,33 @@ export class ProcessWebhookUseCase {
         .exec();
       this.logger.log(`[Webhook] Student ${studentId} financialStatus updated to ${newFinancialStatus}`);
     }
+  }
+
+  private async handleCheckoutPaid(payload: AsaasWebhookDto): Promise<void> {
+    const checkout = payload.checkout;
+    if (!checkout?.externalReference) {
+      this.logger.warn('[Webhook] CHECKOUT_PAID without externalReference, ignoring');
+      return;
+    }
+
+    const studentId = checkout.externalReference;
+
+    const student = await this.studentModel.findById(studentId).exec();
+    if (!student) {
+      this.logger.warn(`[Webhook] Student not found for externalReference: ${studentId}`);
+      return;
+    }
+
+    await this.studentModel
+      .findByIdAndUpdate(studentId, {
+        financialStatus: FinancialStatus.ACTIVE,
+        asaasCheckoutId: checkout.id,
+      })
+      .exec();
+
+    this.logger.log(
+      `[Webhook] CHECKOUT_PAID → Student ${studentId} financialStatus updated to ${FinancialStatus.ACTIVE}`,
+    );
   }
 
   private async handleSubscriptionDeleted(payload: AsaasWebhookDto): Promise<void> {

@@ -241,6 +241,15 @@ Recurring payments must always use priceLocked as the charge amount.
 
 Student fills registration form.
 
+The public registration form must collect, in addition to the existing fields:
+
+- mobilePhone (optional)
+- address (optional)
+- addressNumber (optional)
+- complement (optional)
+- province (optional)
+- postalCode (optional)
+
 CPF must be normalized before saving.
 
 If the student selects scholarship:
@@ -256,6 +265,11 @@ If the student selects paid plan:
 - store asaasCheckoutId
 - store checkoutUrl
 - priceLocked must be set equal to monthlyFee during registration.
+- send full customer contact and address data to Asaas (name, normalized CPF, email, phone or mobilePhone, address, addressNumber, complement, province, postalCode)
+- use the student database id as externalReference both when creating the Asaas customer and when generating the hosted checkout
+- when building the Asaas checkout URL, **never** hardcode URLs; always use the `link` field returned by Asaas as the single source of truth for the checkout URL
+- the recurring subscription created in Asaas must have `cycle = MONTHLY` and `nextDueDate` set to the current date in `YYYY-MM-DD` format
+- when sending phone to Asaas, prefer `mobilePhone` when present; if not present, fall back to `phone`
 
 Return checkoutUrl in the response.
 
@@ -379,6 +393,20 @@ Before implementing the integration the system must:
 
 The MCP interface is the source of truth. Do not invent API endpoints.
 
+The Asaas integration must:
+
+- use TypeScript types that reflect the real MCP responses, including:
+  - `AsaasCheckoutResponse.link` (string): the hosted checkout URL (required)
+  - `AsaasCheckoutResponse.status` (string): current checkout status
+- avoid any hardcoded checkout URL patterns; `link` is the only valid source for the checkout URL
+- always include customer contact and address details when available in both customer creation and checkout creation payloads:
+  - email, phone, mobilePhone, address, addressNumber, complement, province, postalCode
+- set the subscription configuration for recurring checkouts with:
+  - `cycle = MONTHLY`
+  - `nextDueDate` equal to the current date in `YYYY-MM-DD` format
+- use the student id as `externalReference` on both the Asaas customer and checkout so that webhooks and dashboards can be correlated back to the student
+- log every Asaas HTTP response in the client layer (method, path, and full JSON body) using the application logger for observability and easier troubleshooting
+
 ## ASAAS INTEGRATION STRUCTURE
 
 ```
@@ -437,8 +465,19 @@ Apply rate limiting to public endpoints. Example: POST /public/register.
 1. Student accesses public registration page.
 2. Student submits form.
 3. If scholarship: create student, financialStatus = EXEMPT.
-4. If paid plan: create Asaas customer, generate hosted checkout, store checkoutUrl, set priceLocked, return checkoutUrl.
-5. Student is redirected to checkout.
+4. If paid plan:
+   - first, create and persist the student in the local database with:
+     - registrationNumber
+     - cpf normalized
+     - planType = PAID
+     - paymentMethod = CARD
+     - financialStatus = PENDING
+     - priceLocked = monthlyFee
+     - phone stored as `mobilePhone` if provided, otherwise `phone`
+   - then, call Asaas to create the customer and generate the recurring hosted checkout, sending full contact and address data and using the student id as externalReference
+   - after Asaas returns, update the existing student record with asaasCustomerId, asaasCheckoutId and checkoutUrl
+   - if Asaas integration fails after the student is saved, keep the student with financialStatus = PENDING and log the error; the admin will be able to manually create the subscription later via the admin payment endpoints
+5. Student is redirected to checkout using the `checkoutUrl` returned by Asaas (field `link`).
 
 **Payment Flow**
 
