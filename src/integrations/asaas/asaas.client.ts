@@ -45,6 +45,7 @@ export class AsaasClient {
       throw new InternalServerErrorException(errors);
     }
 
+    this.logger.log(`[Asaas] Response ${method} ${path}: ${JSON.stringify(json)}`);
     return json as T;
   }
 

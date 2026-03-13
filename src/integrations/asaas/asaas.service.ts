@@ -8,6 +8,12 @@ export interface CreateAsaasCustomerInput {
   cpfCnpj: string;
   email?: string;
   phone?: string;
+  mobilePhone?: string;
+  address?: string;
+  addressNumber?: string;
+  complement?: string;
+  province?: string;
+  postalCode?: string;
   externalReference?: string;
 }
 
@@ -15,6 +21,13 @@ export interface CreateAsaasCheckoutInput {
   customerId: string;
   customerName: string;
   customerCpf: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  customerAddressNumber?: string;
+  customerComplement?: string;
+  customerProvince?: string;
+  customerPostalCode?: string;
   amount: number;
   externalReference?: string;
 }
@@ -36,6 +49,12 @@ export class AsaasService {
       cpfCnpj: input.cpfCnpj,
       email: input.email,
       phone: input.phone,
+      mobilePhone: input.mobilePhone,
+      address: input.address,
+      addressNumber: input.addressNumber,
+      complement: input.complement,
+      province: input.province,
+      postalCode: input.postalCode,
       externalReference: input.externalReference,
       notificationDisabled: false,
     });
@@ -65,9 +84,17 @@ export class AsaasService {
       customerData: {
         name: input.customerName,
         cpfCnpj: input.customerCpf,
+        email: input.customerEmail,
+        phone: input.customerPhone,
+        address: input.customerAddress,
+        addressNumber: input.customerAddressNumber ? parseInt(input.customerAddressNumber) : undefined,
+        complement: input.customerComplement,
+        province: input.customerProvince,
+        postalCode: input.customerPostalCode,
       },
       subscription: {
         cycle: 'MONTHLY',
+        nextDueDate: new Date().toISOString().split('T')[0],
       },
       externalReference: input.externalReference,
     });

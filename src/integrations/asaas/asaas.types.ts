@@ -4,6 +4,11 @@ export interface AsaasCustomerSaveRequest {
   email?: string;
   phone?: string;
   mobilePhone?: string;
+  address?: string;
+  addressNumber?: string;
+  complement?: string;
+  province?: string;
+  postalCode?: string;
   externalReference?: string;
   notificationDisabled?: boolean;
 }
@@ -46,6 +51,11 @@ export interface AsaasCheckoutCustomerData {
   cpfCnpj?: string;
   email?: string;
   phone?: string;
+  address?: string;
+  addressNumber?: number;
+  complement?: string;
+  province?: string;
+  postalCode?: string;
 }
 
 export interface AsaasCheckoutSaveRequest {
@@ -61,7 +71,8 @@ export interface AsaasCheckoutSaveRequest {
 
 export interface AsaasCheckoutResponse {
   id: string;
-  url?: string;
+  link: string;
+  status: string;
   billingTypes: string[];
   chargeTypes: string[];
   externalReference?: string;

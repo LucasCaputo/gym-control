@@ -10,7 +10,7 @@ export class AsaasMapper {
   toCheckoutUrl(response: AsaasCheckoutResponse): { checkoutId: string; checkoutUrl: string } {
     return {
       checkoutId: response.id,
-      checkoutUrl: (response as any).url || `https://checkout.asaas.com/i/${response.id}`,
+      checkoutUrl: response.link,
     };
   }
 

@@ -44,42 +44,71 @@ export class RegisterStudentUseCase {
       return { studentId: (student as any)._id.toString() };
     }
 
-    if (dto.monthlyFee <= 0) {
-      throw new BadRequestException('Monthly fee must be greater than 0 for paid plan');
+    if (dto.monthlyFee < 5) {
+      throw new BadRequestException('Monthly fee must be at least R$ 5.00 (Asaas minimum charge)');
     }
 
-    const customerId = await this.asaasService.createCustomer({
-      name: dto.name,
-      cpfCnpj: normalizedCpf,
-      email: dto.email,
-      phone: dto.phone,
-    });
-
-    const { checkoutId, checkoutUrl } = await this.asaasService.createRecurringCheckout({
-      customerId,
-      customerName: dto.name,
-      customerCpf: normalizedCpf,
-      amount: dto.monthlyFee,
-    });
-
+    // Salva o aluno no banco ANTES de chamar o Asaas.
+    // Se a integração falhar, o registro já existe e pode ser retomado pelo admin.
     const student = await this.studentModel.create({
       registrationNumber,
       name: dto.name,
       cpf: normalizedCpf,
       email: dto.email,
-      phone: dto.phone,
+      phone: dto.mobilePhone || dto.phone,
       monthlyFee: dto.monthlyFee,
       priceLocked: dto.monthlyFee,
       planType: PlanType.PAID,
       paymentMethod: PaymentMethod.CARD,
       financialStatus: FinancialStatus.PENDING,
-      asaasCustomerId: customerId,
-      asaasCheckoutId: checkoutId,
-      checkoutUrl,
       active: true,
     });
 
-    this.logger.log(`Student registered: ${(student as any)._id}`);
-    return { checkoutUrl, studentId: (student as any)._id.toString() };
+    const studentId = (student as any)._id.toString();
+
+    try {
+      const customerId = await this.asaasService.createCustomer({
+        name: dto.name,
+        cpfCnpj: normalizedCpf,
+        email: dto.email,
+        phone: dto.phone,
+        mobilePhone: dto.mobilePhone,
+        address: dto.address,
+        addressNumber: dto.addressNumber,
+        complement: dto.complement,
+        province: dto.province,
+        postalCode: dto.postalCode,
+        externalReference: studentId,
+      });
+
+      const { checkoutId, checkoutUrl } = await this.asaasService.createRecurringCheckout({
+        customerId,
+        customerName: dto.name,
+        customerCpf: normalizedCpf,
+        customerEmail: dto.email,
+        customerPhone: dto.mobilePhone || dto.phone,
+        customerAddress: dto.address,
+        customerAddressNumber: dto.addressNumber,
+        customerComplement: dto.complement,
+        customerProvince: dto.province,
+        customerPostalCode: dto.postalCode,
+        amount: dto.monthlyFee,
+        externalReference: studentId,
+      });
+
+      await this.studentModel.findByIdAndUpdate(studentId, {
+        asaasCustomerId: customerId,
+        asaasCheckoutId: checkoutId,
+        checkoutUrl,
+      }).exec();
+
+      this.logger.log(`Student registered: ${studentId}`);
+      return { checkoutUrl, studentId };
+    } catch (error) {
+      this.logger.error(`Asaas integration failed for student ${studentId}: ${error.message}`);
+      // Aluno já está no banco com status PENDING.
+      // O admin pode criar a assinatura manualmente via POST /admin/payments/create-subscription.
+      throw error;
+    }
   }
 }
