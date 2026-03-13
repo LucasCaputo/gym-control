@@ -42,6 +42,11 @@ export class AsaasService {
     private readonly configService: AppConfigService,
   ) {}
 
+  async deleteCustomer(customerId: string): Promise<void> {
+    this.logger.log(`Deleting Asaas customer: ${customerId}`);
+    await this.client.deleteCustomer(customerId);
+  }
+
   async createCustomer(input: CreateAsaasCustomerInput): Promise<string> {
     this.logger.log(`Creating Asaas customer for CPF: ${input.cpfCnpj}`);
     const response = await this.client.createCustomer({

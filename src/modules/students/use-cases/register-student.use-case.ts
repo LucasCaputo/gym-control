@@ -65,9 +65,10 @@ export class RegisterStudentUseCase {
     });
 
     const studentId = (student as any)._id.toString();
+    let asaasCustomerId: string | null = null;
 
     try {
-      const customerId = await this.asaasService.createCustomer({
+      asaasCustomerId = await this.asaasService.createCustomer({
         name: dto.name,
         cpfCnpj: normalizedCpf,
         email: dto.email,
@@ -82,7 +83,7 @@ export class RegisterStudentUseCase {
       });
 
       const { checkoutId, checkoutUrl } = await this.asaasService.createRecurringCheckout({
-        customerId,
+        customerId: asaasCustomerId,
         customerName: dto.name,
         customerCpf: normalizedCpf,
         customerEmail: dto.email,
@@ -97,7 +98,7 @@ export class RegisterStudentUseCase {
       });
 
       await this.studentModel.findByIdAndUpdate(studentId, {
-        asaasCustomerId: customerId,
+        asaasCustomerId,
         asaasCheckoutId: checkoutId,
         checkoutUrl,
       }).exec();
@@ -107,7 +108,14 @@ export class RegisterStudentUseCase {
     } catch (error) {
       this.logger.error(`Asaas integration failed for student ${studentId}: ${error.message}`);
       await this.studentModel.findByIdAndDelete(studentId).exec();
-      this.logger.log(`Student ${studentId} removed after Asaas failure so user can retry`);
+      if (asaasCustomerId) {
+        try {
+          await this.asaasService.deleteCustomer(asaasCustomerId);
+          this.logger.log(`Asaas customer ${asaasCustomerId} removed after failure so user can retry`);
+        } catch (rollbackError: any) {
+          this.logger.warn(`Failed to rollback Asaas customer ${asaasCustomerId}: ${rollbackError?.message}`);
+        }
+      }
       throw error;
     }
   }

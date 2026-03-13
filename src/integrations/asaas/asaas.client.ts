@@ -53,6 +53,10 @@ export class AsaasClient {
     return this.request<AsaasCustomerResponse>('POST', '/v3/customers', data);
   }
 
+  async deleteCustomer(customerId: string): Promise<void> {
+    await this.request<{ deleted: boolean }>('DELETE', `/v3/customers/${customerId}`);
+  }
+
   async createCheckout(data: AsaasCheckoutSaveRequest): Promise<AsaasCheckoutResponse> {
     return this.request<AsaasCheckoutResponse>('POST', '/v3/checkouts', data);
   }
