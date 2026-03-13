@@ -51,12 +51,26 @@ export class ProcessWebhookUseCase {
   private async handlePaymentEvent(payload: AsaasWebhookDto): Promise<void> {
     const payment = payload.payment!;
 
-    const student = await this.studentModel
+    let student = await this.studentModel
       .findOne({ asaasCustomerId: payment.customer })
       .exec();
 
+    if (!student && payment.externalReference) {
+      student = await this.studentModel.findById(payment.externalReference).exec();
+      if (student) {
+        this.logger.log(
+          `[Webhook] Student found by externalReference: ${payment.externalReference}, saving asaasCustomerId: ${payment.customer}`,
+        );
+        await this.studentModel
+          .findByIdAndUpdate(payment.externalReference, { asaasCustomerId: payment.customer })
+          .exec();
+      }
+    }
+
     if (!student) {
-      this.logger.warn(`[Webhook] Student not found for customer: ${payment.customer}`);
+      this.logger.warn(
+        `[Webhook] Student not found for customer: ${payment.customer} | externalReference: ${payment.externalReference}`,
+      );
       return;
     }
 
