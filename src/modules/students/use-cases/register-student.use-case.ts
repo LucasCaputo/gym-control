@@ -48,8 +48,8 @@ export class RegisterStudentUseCase {
       throw new BadRequestException('Monthly fee must be at least R$ 5.00 (Asaas minimum charge)');
     }
 
-    // Salva o aluno no banco ANTES de chamar o Asaas.
-    // Se a integração falhar, o registro já existe e pode ser retomado pelo admin.
+    // Salva o aluno no banco antes de chamar o Asaas (webhook precisa do externalReference = studentId).
+    // Se a integração falhar, removemos o aluno para o usuário poder tentar novamente.
     const student = await this.studentModel.create({
       registrationNumber,
       name: dto.name,
@@ -106,8 +106,8 @@ export class RegisterStudentUseCase {
       return { checkoutUrl, studentId };
     } catch (error) {
       this.logger.error(`Asaas integration failed for student ${studentId}: ${error.message}`);
-      // Aluno já está no banco com status PENDING.
-      // O admin pode criar a assinatura manualmente via POST /admin/payments/create-subscription.
+      await this.studentModel.findByIdAndDelete(studentId).exec();
+      this.logger.log(`Student ${studentId} removed after Asaas failure so user can retry`);
       throw error;
     }
   }
