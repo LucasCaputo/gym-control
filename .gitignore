@@ -1,2 +1,7 @@
-# Configuração MCP com chave (não versionar)
+node_modules/
+dist/
+.env
+*.log
+coverage/
+.DS_Store
 .cursor/mcp.json
