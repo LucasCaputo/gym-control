@@ -16,6 +16,11 @@ export class AsaasWebhookDto {
   @Allow()
   account?: Record<string, any>;
 
+  /** Present in subscription events (e.g. SUBSCRIPTION_CREATED). */
+  @IsOptional()
+  @Allow()
+  subscription?: Record<string, any>;
+
   @IsOptional()
   @Allow()
   payment?: {
