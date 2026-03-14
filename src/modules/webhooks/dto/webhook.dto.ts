@@ -39,6 +39,11 @@ export class AsaasWebhookDto {
     externalReference?: string;
   };
 
+  /** Present in receivable anticipation events (e.g. RECEIVABLE_ANTICIPATION_PENDING). */
+  @IsOptional()
+  @Allow()
+  anticipation?: Record<string, any>;
+
   @IsOptional()
   @Allow()
   checkout?: {
