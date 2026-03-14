@@ -86,17 +86,7 @@ export class AsaasService {
           externalReference: input.externalReference,
         },
       ],
-      customerData: {
-        name: input.customerName,
-        cpfCnpj: input.customerCpf,
-        email: input.customerEmail,
-        phone: input.customerPhone,
-        address: input.customerAddress,
-        addressNumber: input.customerAddressNumber ? parseInt(input.customerAddressNumber) : undefined,
-        complement: input.customerComplement,
-        province: input.customerProvince,
-        postalCode: input.customerPostalCode,
-      },
+      customer: input.customerId,
       subscription: {
         cycle: 'MONTHLY',
         nextDueDate: new Date().toISOString().split('T')[0],

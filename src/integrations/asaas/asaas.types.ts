@@ -65,6 +65,8 @@ export interface AsaasCheckoutSaveRequest {
   externalReference?: string;
   callback: AsaasCheckoutCallback;
   items: AsaasCheckoutItem[];
+  /** ID do cliente já cadastrado no Asaas. Use este OU customerData, nunca os dois. */
+  customer?: string;
   customerData?: AsaasCheckoutCustomerData;
   subscription?: AsaasCheckoutSubscription;
 }
