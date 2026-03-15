@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -18,6 +19,7 @@ import { UpdateStudentDto } from './dto/update-student.dto';
 import { RegisterStudentUseCase } from './use-cases/register-student.use-case';
 import { SearchStudentsUseCase } from './use-cases/search-students.use-case';
 import { UpdateStudentUseCase } from './use-cases/update-student.use-case';
+import { DeleteStudentUseCase } from './use-cases/delete-student.use-case';
 
 @Controller()
 export class StudentsController {
@@ -25,6 +27,7 @@ export class StudentsController {
     private readonly registerStudentUseCase: RegisterStudentUseCase,
     private readonly searchStudentsUseCase: SearchStudentsUseCase,
     private readonly updateStudentUseCase: UpdateStudentUseCase,
+    private readonly deleteStudentUseCase: DeleteStudentUseCase,
   ) {}
 
   @Post('public/register')
@@ -54,5 +57,12 @@ export class StudentsController {
   @Roles(Role.ADMIN)
   async update(@Param('id') id: string, @Body() dto: UpdateStudentDto) {
     return this.updateStudentUseCase.execute(id, dto);
+  }
+
+  @Delete('admin/students/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async delete(@Param('id') id: string): Promise<void> {
+    await this.deleteStudentUseCase.execute(id);
   }
 }
