@@ -4,6 +4,10 @@ import { Model } from 'mongoose';
 import { Student, StudentDocument } from '../schemas/student.schema';
 import { normalizeCpf } from '../../../shared/utils/cpf.utils';
 import { Role } from '../../../shared/types/roles.enum';
+import {
+  FinancialStatus,
+  PlanType,
+} from '../../../shared/types/financial-status.enum';
 
 @Injectable()
 export class SearchStudentsUseCase {
@@ -16,6 +20,9 @@ export class SearchStudentsUseCase {
     role: Role,
     page: number = 1,
     limit: number = 20,
+    active?: string,
+    planType?: string,
+    financialStatus?: string,
   ): Promise<any> {
     const skip = (page - 1) * limit;
 
@@ -44,10 +51,23 @@ export class SearchStudentsUseCase {
       };
     }
 
+    const baseFilter: any = {};
+    if (active === 'true') baseFilter.active = true;
+    if (active === 'false') baseFilter.active = false;
+    if (planType && Object.values(PlanType).includes(planType as PlanType)) {
+      baseFilter.planType = planType;
+    }
+    if (
+      financialStatus &&
+      Object.values(FinancialStatus).includes(financialStatus as FinancialStatus)
+    ) {
+      baseFilter.financialStatus = financialStatus;
+    }
+
     if (!q) {
-      const total = await this.studentModel.countDocuments({}).exec();
+      const total = await this.studentModel.countDocuments(baseFilter).exec();
       const students = await this.studentModel
-        .find({})
+        .find(baseFilter)
         .limit(limit)
         .skip(skip)
         .exec();
@@ -57,6 +77,7 @@ export class SearchStudentsUseCase {
 
     const normalized = normalizeCpf(q);
     const filter: any = {
+      ...baseFilter,
       $or: [
         { cpf: normalized },
         { name: { $regex: q, $options: 'i' } },

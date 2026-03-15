@@ -42,6 +42,9 @@ export class StudentsController {
     @Query('q') q: string,
     @Query('page') page: string,
     @Query('limit') limit: string,
+    @Query('active') active: string,
+    @Query('planType') planType: string,
+    @Query('financialStatus') financialStatus: string,
     @CurrentUser() user: any,
   ) {
     return this.searchStudentsUseCase.execute(
@@ -49,6 +52,9 @@ export class StudentsController {
       user.role,
       page ? parseInt(page) : 1,
       limit ? parseInt(limit) : 20,
+      active,
+      planType,
+      financialStatus,
     );
   }
 
