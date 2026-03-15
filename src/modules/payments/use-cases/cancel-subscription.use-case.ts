@@ -24,6 +24,7 @@ export class CancelSubscriptionUseCase {
       .findByIdAndUpdate(studentId, {
         financialStatus: FinancialStatus.CANCELLED,
         asaasSubscriptionId: null,
+        active: false,
       })
       .exec();
   }
