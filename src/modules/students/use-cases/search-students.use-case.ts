@@ -45,9 +45,9 @@ export class SearchStudentsUseCase {
     }
 
     if (!q) {
-      const total = await this.studentModel.countDocuments({ active: true }).exec();
+      const total = await this.studentModel.countDocuments({}).exec();
       const students = await this.studentModel
-        .find({ active: true })
+        .find({})
         .limit(limit)
         .skip(skip)
         .exec();
@@ -57,7 +57,6 @@ export class SearchStudentsUseCase {
 
     const normalized = normalizeCpf(q);
     const filter: any = {
-      active: true,
       $or: [
         { cpf: normalized },
         { name: { $regex: q, $options: 'i' } },
